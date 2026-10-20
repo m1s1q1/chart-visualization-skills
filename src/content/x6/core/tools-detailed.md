@@ -174,7 +174,7 @@ graph.on('node:mouseleave', ({ node }) => {
 ```javascript
 import { Graph } from '@antv/x6';
 
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 
 const node = graph.addNode({
   shape: 'rect',
@@ -508,7 +508,7 @@ node.removeTools();
 ```javascript
 // ❌ 错误：工具不在 Graph 配置中设置
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   tools: ['button-remove'],  // 不存在此配置
 });
 

@@ -173,7 +173,7 @@ InOut 和 Radial 额外支持：
 import { Graph } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   width: 800,
   height: 600,
 });

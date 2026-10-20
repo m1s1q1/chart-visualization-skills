@@ -345,7 +345,7 @@ squaredLength({ x:0, y:0 }, { x:3, y:4 });   // 25
 import { Graph, Rectangle, Point } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   background: { color: '#F2F7FA' },
   panning: true,
   mousewheel: { enabled: true, modifiers: 'ctrl' },

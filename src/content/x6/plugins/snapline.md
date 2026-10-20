@@ -28,7 +28,7 @@ use_cases:
 ```javascript
 import { Graph, Snapline } from '@antv/x6';
 
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.use(new Snapline({ enabled: true }));
 ```
 
@@ -85,7 +85,7 @@ graph.toggleSnaplineOnResizing(true);
 import { Graph, Snapline } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   width: 800,
   height: 600,
   grid: { visible: true, size: 10 },
@@ -131,7 +131,7 @@ graph.use(new Snapline({
 ```javascript
 // 错误：3.x 不支持
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   snapline: { enabled: true },  // ❌
 });
 ```
@@ -139,6 +139,6 @@ const graph = new Graph({
 ```javascript
 // 正确
 import { Graph, Snapline } from '@antv/x6';
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.use(new Snapline({ enabled: true }));  // ✅
 ```

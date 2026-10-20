@@ -52,8 +52,8 @@ Graph 是 X6 的画布容器，管理所有节点和边。X6 采用**命令式 A
 import { Graph } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',  // 必填：DOM id 或 HTMLElement
-  width: 80 0,              // 可选：不设则自适应容器
+  container: document.getElementById('container'),  // 必填：已挂载的 HTMLElement
+  width: 800,              // 可选：不设则自适应容器
   height: 600,
 });
 ```
@@ -62,7 +62,7 @@ const graph = new Graph({
 
 ```javascript
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   background: {
     color: '#F2F7FA',      // 背景色
   },
@@ -92,7 +92,7 @@ grid: {
 
 ```javascript
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   panning: true,                    // 拖拽平移（鼠标左键拖空白区域）
   mousewheel: {
     enabled: true,
@@ -142,7 +142,7 @@ graph.zoomToRect({
 
 ```javascript
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   connecting: {
     allowBlank: false,          // 禁止连接到空白
     allowLoop: false,           // 禁止自环
@@ -170,7 +170,7 @@ const graph = new Graph({
 
 ```javascript
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   translating: {
     restrict: true,   // 限制节点在画布范围内移动
   },
@@ -188,7 +188,7 @@ translating: {
 
 ```javascript
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   embedding: {
     enabled: true,
     findParent: 'bbox',   // 使用包围盒检测父节点
@@ -239,7 +239,7 @@ graph.addEdge({
 import { Graph } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   width: 800,
   height: 600,
   background: { color: '#F2F7FA' },
@@ -288,7 +288,7 @@ graph.addEdge({
 import { Graph } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   width: 800,
   height: 600,
   background: { color: '#F2F7FA' },
@@ -323,7 +323,7 @@ graph.use(new History({ enabled: true }));
 const graph = new Graph({ width: 800, height: 600 });
 
 // ✅ 正确
-const graph = new Graph({ container: 'container', width: 800, height: 600 });
+const graph = new Graph({ container: document.getElementById('container'), width: 800, height: 600 });
 ```
 
 ### 2. 清空画布后重新加载数据失败
@@ -350,7 +350,7 @@ import { Snapline } from '@antv/x6-plugin-snapline';
 
 // ✅ 正确：从 @antv/x6 导入并通过 graph.use() 注册
 import { Graph, Snapline } from '@antv/x6';
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.use(new Snapline({ enabled: true }));
 ```
 
@@ -370,27 +370,29 @@ graph.addEdge({ source: 'n1', target: 'n2' });
 
 ### 5. container 使用规范
 
-`container` 变量由运行环境自动注入，**禁止**在代码中声明 `const container = ...`，否则报 `Identifier 'container' has already been declared`。
+独立页面可以声明局部容器变量，也可以直接查询 DOM。若宿主已在同一作用域注入 `HTMLElement` 类型的 `container`，直接复用该变量，避免重复声明。
 
 ```javascript
-// ✅ 正确：直接使用字符串 'container'
-const graph = new Graph({ container: 'container' });
+// 独立页面：确保容器已存在
+const graph = new Graph({ container: document.getElementById('container') });
+```
 
-// ❌ 错误：重复声明 container 变量
-const container = document.getElementById('container');
-const graph = new Graph({ container }); // 报错：Identifier 'container' has already been declared
+宿主已注入 DOM 元素时，改用以下写法：
+
+```javascript
+const graph = new Graph({ container });
 ```
 
 ### 6. 初始化后未正确调用画布变换方法
 
 ```javascript
 // ❌ 错误：未调用 centerContent 或 zoomToFit
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.addNode(...);
 // 缺少居中或缩放调用
 
 // ✅ 正确：初始化后调用变换方法
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.addNode(...);
 graph.zoomToFit();
 graph.centerContent();
@@ -399,11 +401,11 @@ graph.centerContent();
 ### 7. container 必须有效
 
 ```javascript
-// ✅ 正确：使用字符串 'container'（运行环境已注入）
-const graph = new Graph({ container: 'container' });
+// ✅ 正确：查询已挂载且尺寸非零的容器
+const graph = new Graph({ container: document.getElementById('container') });
 
-// ❌ 错误：传入不存在的元素
-const graph = new Graph({ container: document.getElementById('not-exist') }); // 报错
+// ❌ 错误：元素不存在时查询结果为 null
+const graph = new Graph({ container: document.getElementById('not-exist') });
 ```
 
 ### 8. 错误使用 `zoomToFit` 后未调用 `centerContent`
@@ -452,15 +454,14 @@ connecting: {
 }
 ```
 
-### 11. container 使用字符串 'container'
+### 11. container 必须是 HTMLElement
 
 ```javascript
-// ✅ 正确：使用默认的 'container' 字符串
+// ❌ 错误：X6 不解析 ID 或选择器字符串
 const graph = new Graph({ container: 'container' });
 
-// ❌ 错误：在代码中声明 container 变量（运行环境已注入，重复声明会报错）
-const container = document.getElementById('my-container');
-const graph = new Graph({ container }); // Identifier 'container' has already been declared
+// ✅ 正确：先获取已存在的 DOM 元素
+const graph = new Graph({ container: document.getElementById('container') });
 ```
 
 ### 12. 错误使用 `zoomToFit` 和 `centerContent` 顺序
@@ -480,7 +481,7 @@ graph.centerContent();
 ```javascript
 // ❌ 错误：未启用 mousewheel
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   mousewheel: {
     enabled: false,
   },
@@ -488,7 +489,7 @@ const graph = new Graph({
 
 // ✅ 正确：启用 mousewheel
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   mousewheel: {
     enabled: true,
     modifiers: 'ctrl',
@@ -501,13 +502,13 @@ const graph = new Graph({
 ```javascript
 // ❌ 错误：未启用 panning
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   panning: false,
 });
 
 // ✅ 正确：启用 panning
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   panning: true,
 });
 ```
@@ -517,12 +518,12 @@ const graph = new Graph({
 ```javascript
 // ❌ 错误：未设置 background
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
 });
 
 // ✅ 正确：设置 background
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   background: {
     color: '#F2F7FA',
   },
@@ -534,12 +535,12 @@ const graph = new Graph({
 ```javascript
 // ❌ 错误：未设置 grid
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
 });
 
 // ✅ 正确：设置 grid
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   grid: {
     visible: true,
     size: 10,
@@ -551,12 +552,12 @@ const graph = new Graph({
 
 ```javascript
 // ❌ 错误：画布为空时调用 centerContent 和 zoom，导致白屏
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.centerContent(); // 白屏
 graph.zoom(0.8);       // 白屏
 
 // ✅ 正确：添加节点后再调用 centerContent 和 zoom
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.addNode({ shape: 'rect', x: 50, y: 50, width: 100, height: 40, label: 'Node A' });
 graph.centerContent();
 graph.zoom(0.8);
@@ -594,13 +595,11 @@ graph.zoomToRect({
 });
 ```
 
-### 20. 错误使用 `container` 变量（重复声明）
+### 20. 宿主已注入 container 时不要重复声明
+
+仅当宿主已在同一作用域提供 `container` 变量时，重新声明它才会造成冲突。此时直接复用宿主提供的 DOM 元素；独立页面声明自己的容器变量是合法的。
 
 ```javascript
-// ❌ 错误：在代码中重复声明 container 变量
-const container = document.getElementById('my-container');
+// 宿主已提供 HTMLElement 类型的 container
 const graph = new Graph({ container });
-
-// ✅ 正确：使用字符串 'container'
-const graph = new Graph({ container: 'container' });
 ```

@@ -159,7 +159,7 @@ attrs: {
 import { Graph } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   width: 800,
   height: 600,
 });
@@ -298,7 +298,7 @@ graph.addEdge({
 import { Graph } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   background: { color: '#F2F7FA' },
 });
 

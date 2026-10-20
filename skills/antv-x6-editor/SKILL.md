@@ -11,11 +11,13 @@ tools:
 
 X6 v3 is AntV's diagram editing engine for flowcharts, DAGs, ER diagrams, org charts, and other interactive node-edge editors. Unlike G2/G6, X6 uses an **imperative API** — you create a `Graph` instance, then call `graph.addNode()`, `graph.addEdge()`, and register plugins via `graph.use()`.
 
+The following example assumes an existing, sized `<div id="container">` in the page.
+
 ```javascript
 import { Graph } from '@antv/x6';
 
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   background: { color: '#F2F7FA' },
 });
 
@@ -40,10 +42,11 @@ graph.centerContent();
 ### CDN Usage
 
 ```html
-<script src="https://unpkg.com/@antv/x6@3/dist/x6.js"></script>
+<div id="container" style="width: 800px; height: 500px;"></div>
+<script src="https://unpkg.com/@antv/x6@3/dist/x6.min.js"></script>
 <script>
   const graph = new X6.Graph({
-    container: 'container',
+    container: document.getElementById('container'),
     background: { color: '#F2F7FA' },
   });
   const source = graph.addNode({
@@ -92,24 +95,30 @@ curl "https://sive.antv.antgroup.com/api/v1/context/retrieve?query=flowchart+ste
 
 ```javascript
 // ❌ WRONG — graph.render() is G6 API, not X6
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 graph.render();
 
 // ✅ CORRECT — X6 auto-renders on addNode/addEdge/fromJSON
-const graph = new Graph({ container: 'container', background: { color: '#F2F7FA' } });
+const graph = new Graph({ container: document.getElementById('container'), background: { color: '#F2F7FA' } });
 graph.addNode({ shape: 'rect', x: 40, y: 40, width: 100, height: 40 });
 ```
 
-### MUST: Use string literal `container: 'container'` — no variable declaration
+### MUST: Pass an existing `HTMLElement` as `container`
+
+Native X6 does not resolve DOM IDs or CSS selector strings. Create the container element before initializing the graph and give it a non-zero size.
 
 ```javascript
-// ❌ WRONG — declaring container variable is forbidden
-const container = document.getElementById('container');
-const graph = new Graph({ container });
+// ❌ WRONG — X6 expects an HTMLElement, not an ID or selector string
+const graph = new Graph({ container: 'container' });
 
-// ✅ CORRECT — string literal, runtime auto-resolves
-const graph = new Graph({ container: 'container', background: { color: '#F2F7FA' } });
+// ✅ CORRECT — resolve the existing element in a standalone page
+const graph = new Graph({
+  container: document.getElementById('container'),
+  background: { color: '#F2F7FA' },
+});
 ```
+
+If the host already provides an `HTMLElement` named `container` (as the evaluator does), reuse it with `new Graph({ container })`. Avoid redeclaring that binding in the same scope. In a standalone application, declaring a local container variable is valid; always ensure the element exists before using it.
 
 ### MUST: Register plugins before using their methods
 
@@ -120,7 +129,7 @@ graph.select();      // Error: method not found
 
 // ✅ CORRECT — register first, then call
 import { Graph, Export, Selection } from '@antv/x6';
-const graph = new Graph({ container: 'container', background: { color: '#F2F7FA' } });
+const graph = new Graph({ container: document.getElementById('container'), background: { color: '#F2F7FA' } });
 graph.use(new Export());
 graph.use(new Selection({ enabled: true, rubberband: true }));
 // Now graph.toPNG() and graph.select() are available
@@ -140,7 +149,7 @@ graph.use(new Embedding());                   // Error: not a constructor
 // ✅ CORRECT — embedding is a Graph constructor option
 import { Graph, Selection } from '@antv/x6';
 const graph = new Graph({
-  container: 'container',
+  container: document.getElementById('container'),
   embedding: { enabled: true, findParent: 'bbox' },
   mousewheel: { enabled: true, zoomAtMousePosition: true, modifiers: ['ctrl'] },
 });
@@ -179,10 +188,10 @@ graph.centerContent();
 
 ```javascript
 // ❌ WRONG — no background, no default styles
-const graph = new Graph({ container: 'container' });
+const graph = new Graph({ container: document.getElementById('container') });
 
 // ✅ CORRECT — mandatory background + default styles
-const graph = new Graph({ container: 'container', background: { color: '#F2F7FA' } });
+const graph = new Graph({ container: document.getElementById('container'), background: { color: '#F2F7FA' } });
 graph.addNode({
   shape: 'rect', x: 40, y: 40, width: 100, height: 40,
   label: 'Node',
