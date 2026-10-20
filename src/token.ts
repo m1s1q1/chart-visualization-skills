@@ -2,6 +2,7 @@ import type { Doc } from './types';
 
 /** 按 maxTokens 预算自动裁剪内容，优先保留 frontmatter 和代码块 */
 export function applyTokenBudget(docs: Doc[], budget: number): Doc[] {
+  if (docs.length === 0) return [];
   const perDocBudget = Math.floor(budget / docs.length);
   return docs.map(doc => ({
     ...doc,
@@ -9,39 +10,74 @@ export function applyTokenBudget(docs: Doc[], budget: number): Doc[] {
   }));
 }
 
-/** 智能裁剪：frontmatter + 代码块优先，中间描述可裁 */
+/** 保留预算内的完整 frontmatter / 代码块，再用剩余预算裁剪描述文本。 */
 export function truncateSmart(content: string, budget: number): string {
-  const tokens = countTokens(content);
-  if (tokens <= budget) return content;
+  budget = Math.floor(budget);
+  if (!(budget > 0)) return '';
+  if (countTokens(content) <= budget) return content;
 
-  // 分离 frontmatter
-  const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
-  const frontmatter = fmMatch?.[0] ?? '';
-  const body = content.slice(frontmatter.length);
+  const segments: { text: string; protected: boolean }[] = [];
+  const frontmatter = content.match(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/)?.[0];
+  if (frontmatter) segments.push({ text: frontmatter, protected: true });
 
-  // 提取代码块
-  const codeBlocks: string[] = [];
-  const bodyNoCode = body.replace(/```[\s\S]*?```/g, (m) => (codeBlocks.push(m), '<<CODE>>'));
-
-  const fmTokens = countTokens(frontmatter);
-  const codeTokens = codeBlocks.reduce((sum, _) => sum + countTokens('```js\n// code\n```'), 0);
-  const mainBudget = Math.max(0, budget - fmTokens - codeTokens);
-
-  if (mainBudget <= 0) {
-    return (frontmatter + codeBlocks.join('\n')).slice(0, budget * 4);
+  // Store actual segments rather than inserting placeholders into prose.
+  let cursor = frontmatter?.length ?? 0;
+  const opening = /^ {0,3}(`{3,}|~{3,})[^\r\n]*(?:\r?\n|$)/gm;
+  opening.lastIndex = cursor;
+  let match: RegExpExecArray | null;
+  while ((match = opening.exec(content))) {
+    if (match.index > cursor) {
+      segments.push({ text: content.slice(cursor, match.index), protected: false });
+    }
+    const fence = match[1];
+    const closing = new RegExp(`^ {0,3}${fence[0]}{${fence.length},}[ \\t]*(?:\\r?\\n|$)`, 'gm');
+    closing.lastIndex = opening.lastIndex;
+    const end = closing.exec(content);
+    cursor = end ? closing.lastIndex : content.length;
+    segments.push({ text: content.slice(match.index, cursor), protected: true });
+    opening.lastIndex = cursor;
+  }
+  if (cursor < content.length) {
+    segments.push({ text: content.slice(cursor), protected: false });
   }
 
-  let main = bodyNoCode;
-  if (countTokens(main) > mainBudget) {
-    const ratio = (mainBudget / countTokens(main)) * 0.9;
-    main = main.slice(0, Math.floor(main.length * ratio));
+  // Reserve complete protected segments first, including joining newlines.
+  const selected = new Map<number, string>();
+  let remaining = budget;
+  for (const [index, segment] of segments.entries()) {
+    if (!segment.protected) continue;
+    const cost = countTokens(segment.text + '\n');
+    if (cost <= remaining) {
+      selected.set(index, segment.text);
+      remaining -= cost;
+    }
   }
 
-  // 还原代码块
-  let i = 0;
-  const result = main.replace(/<<CODE>>/g, () => codeBlocks[i++] ?? '');
+  for (const [index, segment] of segments.entries()) {
+    if (segment.protected || remaining <= 1) continue;
+    const text = truncateText(segment.text, remaining - 1);
+    if (!text) continue;
+    selected.set(index, text);
+    remaining -= countTokens(text + '\n');
+  }
 
-  return frontmatter + result;
+  return [...selected.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, text]) => text)
+    .join('\n');
+}
+
+/** 使用与 countTokens 相同的字符权重，避免截断 Unicode 码点。 */
+function truncateText(text: string, budget: number): string {
+  let units = 0;
+  let end = 0;
+  for (const character of text) {
+    const cost = /[一-龥]/.test(character) ? 4 : character.length;
+    if (units + cost > budget * 4) break;
+    units += cost;
+    end += character.length;
+  }
+  return text.slice(0, end);
 }
 
 export function countTokens(text: string): number {
